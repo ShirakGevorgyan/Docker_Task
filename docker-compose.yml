@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  app:
+    build: ./app
+    volumes:
+      - ./data:/app/data
+      - /dev/snd:/dev/snd
+      - ~/.config/pulse/cookie:/root/.config/pulse/cookie  # PulseAudio cookie
+      - /run/user/1000/pulse:/run/user/1000/pulse  # PulseAudio socket
+    environment:
+      - DB_HOST=db
+      - MYSQL_USER=Marshal
+      - MYSQL_PASSWORD=1111
+      - MYSQL_DATABASE=user_metrics
+      - FLASK_APP=app.py 
+      - FLASK_ENV=development  
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native  # PulseAudio server
+      - AUDIODEV=hw:0,0  # Audio device configuration
+    depends_on:
+      - db
+    command: ["./wait-for-it.sh", "db:3306", "--", "flask", "run", "--host=0.0.0.0", "--port=5000"]
+    privileged: true  
+    networks:
+      - app-network  
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=user_metrics
+      - MYSQL_USER=Marshal
+      - MYSQL_PASSWORD=1111
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network  
+
+volumes:
+  db_data:
+
+networks:
+  app-network:  
+    driver: bridge
